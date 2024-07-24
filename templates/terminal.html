@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        #terminalStatus.badge-success {
+            animation: greenBlink 1s infinite;
+        }
+
+        #terminalStatus.badge-danger {
+            animation: redBlink 0.5s infinite;
+        }
+
+        @keyframes greenBlink {
+            0% { background-color: #4CAF50; }
+            50% { background-color: #2E8B57; }
+            100% { background-color: #4CAF50; }
+        }
+
+        @keyframes redBlink {
+            0% { background-color: #f44336; }
+            50% { background-color: #d32f2f; }
+            100% { background-color: #f44336; }
+        }
+
+        /* Стили для карточек */
+        .card {
+            margin-bottom: 20px;
+        }
+
+        /* Стили для  "Информации о терминале" */
+        .terminal-info {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .terminal-info p {
+            margin-bottom: 5px;
+        }
+
+        /* Стили для "Количество купюр в терминале" */
+        .banknote-counts {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .banknote-counts p {
+            margin-bottom: 5px;
+        }
+
+        /* Стили для кнопок */
+        .btn {
+            margin-right: 5px;
+        }
+
+        /* Стили для кнопки "Открыть форму инкассации" */
+        #openIncasationButton.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        <a href="{{ url_for('main')}}"><button type="button" class="btn btn-outline-primary">Вернуться Назад</button></a>    
+        <br><br>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="terminal-info">
+                    <p>Адрес: {{ terminal.address }}</p>
+                    <p>IP: {{ terminal.ip }}</p>
+                    <p>Статус: <span id="terminalStatus" class="badge badge-success">Загрузка...</span></p>    
+                    <button type="button" class="btn btn-outline-secondary" id="refreshButton">обновить</button>
+                </div>
+
+                <div class="banknote-counts">
+                    <p class="title1">Количество купюр в терминале</p>
+                    <hr>
+                    {% for banknote_count in banknote_counts %}
+                        <b><p>{{ banknote_count.nominal }}р - {{ banknote_count.count }} шт.</p></b>
+                    {% endfor %}
+                    <hr>
+                    <b><p>Общая сумма бокса - {{ total_amount }} руб. </p></b>
+                    <b><p>Количество купюр - {{ total_count }} шт.</p></b>
+                    <hr>
+                    <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">обновить</button>
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <button type="button" class="btn btn-primary" id="openIncasationButton" onclick="openIncasationForm()" 
+                                    {% if total_amount == 0 %} disabled {% endif %}>
+                                Открыть форму инкассации
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="incasationForm" class="row mt-4" style="display: none;">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    Форма инкассации
+                                </div>
+                                <div class="card-body">
+                                    <form method="POST" action="{{ url_for('incasation', terminal_id=terminal.id) }}">
+                                        <button type="submit" class="btn btn-success">Подтвердить инкассацию</button>
+                                        <button type="button" class="btn btn-secondary" onclick="closeIncasationForm()">Отмена</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                История платежей
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped" id="paymentTable">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>ЛС</th>
+                                            <th>Логин</th>
+                                            <th>ФМ</th>
+                                            <th>Метод</th>
+                                            <th>Сумма</th>
+                                            <th>Время</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payment in payments[:10] %}
+                                        <tr>
+                                            <td>{{ payment.id }}</td>
+                                            <td>{{ payment.account_number }}</td>
+                                            <td>{{ payment.login }}</td>
+                                            <td>{{ payment.fm }}</td>
+                                            <td>{{ payment.method }}</td>
+                                            <td>{{ payment.amount }}</td>
+                                            <td>{{ payment.time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                    <a class="btn btn-primary" href="{{ url_for('payments', terminal_id=terminal.id) }}">Посмотреть все записи{{ terminal_id }}</a>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <div class="col-md-12 mt-3">
+                        <div class="card">
+                            <div class="card-header">
+                                История инкассаций
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Время</th>
+                                            <th>Общая сумма</th>
+                                            <th>Кол-во купюр</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for incasation_history in incasation_histories[:10] %}
+                                        <tr>
+                                            <td>{{ incasation_history.time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                            <td>{{ incasation_history.total_amount }}</td>
+                                            <td>{{ incasation_history.total_count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <a class="btn btn-primary" href="{{ url_for('incasations', terminal_id=terminal.id) }}">Посмотреть все записи{{ terminal_id }}</a>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <div id="incasationResult" class="alert alert-success mt-4" style="display: none;">
+            <h4 class="alert-heading">Инкассация завершена!</h4>
+            <p>Сумма: <span id="incasationAmount"></span></p>
+            <p>Количество купюр: <span id="incasationCount"></span></p>
+        </div>
+
+
+        
+        <script>
+            // функция incasation(terminal_id) удалена - не нужна в контексте этого раздела
+
+            function openIncasationForm() {
+                document.getElementById('incasationForm').style.display = 'block';
+            }
+
+            function closeIncasationForm() {
+                document.getElementById('incasationForm').style.display = 'none';
+            }
+
+            // Обновляем статус терминала при нажатии на кнопку "обновить"
+            
+            const datetime = window.datetime;
+            document.getElementById('refreshButton').addEventListener('click', function() {
+                fetch(`/status_{{terminal.id}}`) 
+                    .then(response => response.text())
+                    .then(status => {
+                        let statusSpan = document.getElementById('terminalStatus');
+                        statusSpan.textContent = status; // Обновляем текст статуса
+                        if (status === 'Online') {
+                            statusSpan.classList.remove('badge-danger');
+                            statusSpan.classList.add('badge-success');
+                        } else {
+                            statusSpan.classList.remove('badge-success');
+                            statusSpan.classList.add('badge-danger');
+                        }
+                    })
+                    .catch(error => console.error('Ошибка при получении статуса: ', error));
+            });
+    
+                        // Кнопка "Обновить" нажимается каждую секунду
+                        setInterval(function() {
+                document.getElementById('refreshButton').click(); 
+            }, 5000); // 1000 миллисекунд = 1 секунда
+
+        
+        </script>
+    </div>
+</body>
+</html>

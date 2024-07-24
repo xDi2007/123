@@ -1,0 +1,11 @@
+/* ... (Стилизация) */
+.container1 {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.title1 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+    <style>
+        #terminalStatus.badge-success {
+            animation: greenBlink 1s infinite;
+        }
+
+        #terminalStatus.badge-danger {
+            animation: redBlink 0.5s infinite;
+        }
+
+        @keyframes greenBlink {
+            0% { background-color: #4CAF50; }
+            50% { background-color: #2E8B57; }
+            100% { background-color: #4CAF50; }
+        }
+
+        @keyframes redBlink {
+            0% { background-color: #f44336; }
+            50% { background-color: #d32f2f; }
+            100% { background-color: #f44336; }
+        }
+    </style>
+    <div class="container">
+        <br>
+        <h2>Терминалы</h2>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <a href="{{url_for('logout')}}"><button type="button" class="btn btn-outline-danger ">Выйти</button></a>
+                <a href="{{ url_for('add_terminal') }}" class="btn btn-primary">Добавить терминал</a>
+            </div>
+        </div>
+        <div class="row">
+            {% for terminal in terminals %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        <a href="{{ url_for('terminal', terminal_id=terminal.id) }}">{{ terminal.address }}</a>
+                    </div>
+                    <div class="card-body">
+                        <p>Имя: {{ terminal.name}}</p>
+                        <p>Адрес: {{ terminal.address }}</p>
+                        <p>IP: {{ terminal.ip }}</p>
+                        <p>Статус: <span id="terminalStatus_{{ terminal.id }}" class="badge badge-success">Загрузка...</span></p>    
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshButton_{{ terminal.id }}">обновить</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <script>
+            const datetime = window.datetime;
+
+            // Функция обновления статуса терминала
+            function updateTerminalStatus(terminalId) {
+                fetch(`/status_${terminalId}`)
+                    .then(response => response.text())
+                    .then(status => {
+                        let statusSpan = document.getElementById(`terminalStatus_${terminalId}`);
+                        statusSpan.textContent = status;
+                        if (status === 'Online') {
+                            statusSpan.classList.remove('badge-danger');
+                            statusSpan.classList.add('badge-success');
+                        } else {
+                            statusSpan.classList.remove('badge-success');
+                            statusSpan.classList.add('badge-danger');
+                        }
+                    })
+                    .catch(error => console.error('Ошибка при получении статуса: ', error));
+            }
+
+            // Функция обработки нажатия на кнопку обновления
+            function refreshTerminal(terminalId) {
+                updateTerminalStatus(terminalId);
+                setInterval(function() {
+                    updateTerminalStatus(terminalId);
+                }, 5000); // 5000 миллисекунд = 5 секунд
+            }
+
+            // Вызываем функцию refreshTerminal для каждого терминала после загрузки страницы
+            {% for terminal in terminals %}
+                refreshTerminal({{ terminal.id }});
+            {% endfor %}
+        </script>
+    </div>
+</body>
+</html>
